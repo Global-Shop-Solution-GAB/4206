@@ -1,0 +1,165 @@
+Program.Sub.ScreenSU.Start
+Gui.frmOpenWo..Create
+Gui.frmOpenWo..Caption("Open Workorder")
+Gui.frmOpenWo..Size(2910,2820)
+Gui.frmOpenWo..MinX(0)
+Gui.frmOpenWo..MinY(0)
+Gui.frmOpenWo..Position(0,0)
+Gui.frmOpenWo..BackColor(-2147483633)
+Gui.frmOpenWo..MaxButton(False)
+Gui.frmOpenWo..MinButton(False)
+Gui.frmOpenWo..MousePointer(0)
+Gui.frmOpenWo..Event(UnLoad,frmOpenWo_UnLoad2)
+Gui.frmOpenWo.cmdPrint.Create(Button)
+Gui.frmOpenWo.cmdPrint.Size(1425,465)
+Gui.frmOpenWo.cmdPrint.Position(120,1665)
+Gui.frmOpenWo.cmdPrint.Caption("Print")
+Gui.frmOpenWo.cmdPrint.Event(Click,cmdPrint_Click2)
+Gui.frmOpenWo.dtpStart.Create(DatePicker)
+Gui.frmOpenWo.dtpStart.Size(1365,285)
+Gui.frmOpenWo.dtpStart.Position(1080,285)
+Gui.frmOpenWo.dtpEnd.Create(DatePicker)
+Gui.frmOpenWo.dtpEnd.Size(1365,285)
+Gui.frmOpenWo.dtpEnd.Position(1080,720)
+Gui.frmOpenWo.lbl1.Create(Label,"Start Date :",True,945,255,0,120,330,True,0,"Arial",8,-986896,0)
+Gui.frmOpenWo.lbl2.Create(Label,"End Date :",True,945,255,0,150,765,True,0,"Arial",8,15790320,0)
+Gui.frmOpenWo.lbl2.ForeColor(0)
+Gui.frmOpenWo.chkallDate.Create(CheckBox)
+Gui.frmOpenWo.chkallDate.Size(1560,360)
+Gui.frmOpenWo.chkallDate.Position(180,1125)
+Gui.frmOpenWo.chkallDate.Caption("All Dates")
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+
+V.Local.sError.Declare(String)
+' open odbc connection
+F.ODBC.Connection!Con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass,72000)
+
+Gui.frmOpenWo..Show 
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4206_BIOPENJOBS.g2u.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+Program.Sub.cmdPrint_Click2.Start
+
+
+
+F.Intrinsic.Control.SetErrorHandler("cmdPrint_Click2_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+'f.Intrinsic.UI.Msgbox("")
+'
+V.Local.sSQL.Declare(String)
+V.local.lBIRunID.Declare(long)
+V.local.lLogID.Declare(long)
+V.Local.iret.Declare(long)
+V.local.dtStart.Declare(Date)
+V.Local.dtEnd.Declare(Date)
+v.local.sSqlsub.Declare(String)
+'
+
+'
+'F.Intrinsic.Debug.InvokeDebugger
+
+
+Function.Intrinsic.UI.InvokeWaitDialog("Opening Report. please wait ...")
+Gui.frmdashboard..MousePointer(11)
+
+f.Intrinsic.Control.If(v.Screen.frmOpenWo!chkallDate.Value,=,0)
+	V.local.dtStart.Set(v.Screen.frmOpenWo!dtpStart.Value)
+	V.local.dtEnd.Set(v.Screen.frmOpenWo!dtpEnd.Value)
+	f.Intrinsic.String.Build(" item_promise_dt between '{0}' and '{1}' and ",V.local.dtStart.PervasiveDate ,V.local.dtEnd.PervasiveDate,v.local.sSqlsub)
+f.Intrinsic.Control.EndIf 
+
+F.Global.BI.GetRunID(v.local.lBIRunID)
+F.Intrinsic.Control.If(V.Ambient.IsInIDE,=,True)
+    F.Global.BI.StartLogging(V.local.lBIRunID,100069,0,"",V.local.lLogID)
+F.Intrinsic.Control.Else
+	F.Global.BI.StartLogging(V.local.lBIRunID,-1,-1,"",V.local.lLogID)
+F.Intrinsic.Control.EndIf
+
+f.ODBC.Connection!Con.Execute("delete from GCG_4206_BIOPNORDER")
+
+f.Intrinsic.String.Build(" Insert Into GCG_4206_BIOPNORDER select {0},Customer,Name_Customer,CUSTOMER_PO,Ord.order_no,ORD.record_no,rtrim(part),location,description,um_order,qty_ordered,item_promise_dt, qty_order,qty_onhand ",V.local.lBIRunID,v.local.sSql)
+f.Intrinsic.String.Build(" {0} from v_order_header HDR join v_order_lines ORD on HDR.order_no = ORD.order_no join v_customer_master Mast on  HDR.Customer = Mast.Customer ",v.local.sSql,v.local.sSql)
+f.Intrinsic.String.Build(" {0} left join v_INVENTORY_MSTR INV on ORD.part = INV.part and ORD.location = INV.location left join v_INVENTORY_MST2 MST2 on ORD.part = MST2.part and ORD.location = MST2.location ",v.local.sSql,v.local.sSql)
+f.Intrinsic.String.Build(" {0} where {1} Qty_bo>0  and code_source = 'M' and Product_Line = 'FG'  ",v.local.sSql,v.local.sSqlsub,v.local.sSql)
+F.Intrinsic.Debug.Stop
+
+f.ODBC.Connection!Con.Execute(v.local.sSql)
+
+f.ODBC.Connection!Con.Execute("delete from GCG_4206_BIWO")
+
+f.ODBC.Connection!Con.Execute("Insert into GCG_4206_BIWO select distinct job,suffix,rtrim(A.part) from v_job_header A join GCG_4206_BIOPNORDER B ON  rtrim(A.Part) = B.Part join V_JOB_OPERATIONS C on A.Job = C.job and A.suffix = C.suffix and C.LMO in ('L', 'O') and FLAG_CLOSED <> 'Y' and C.SEQ < '900000'")
+
+f.ODBC.Connection!Con.Execute("Insert into GCG_4206_BIWO (select   job,suffix,rtrim(part) from v_job_header where  suffix <> '000' and Job IN (select BI_WO from GCG_4206_BIWO  where Job = BI_WO and BI_Suffix = '000'  ))")
+
+
+F.Global.BI.StopLogging(v.local.lLogid)
+
+
+
+F.Global.BI.RunReportPreProcessor(V.local.lBIRunID,V.local.lLogid,"","","",-1,True,"",-1,"",-1,"","",V.Local.iret)
+
+Gui.frmdashboard..MousePointer(0)
+Function.Intrinsic.UI.CloseWaitDialog
+
+f.Intrinsic.Control.CallSub(frmopenwo_unload2)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdPrint_Click2_Err")
+Gui.frmdashboard..MousePointer(0)
+Function.Intrinsic.UI.CloseWaitDialog
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4206_BIOPENJOBS.g2u.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.cmdPrint_Click2.End
+
+Program.Sub.frmOpenWo_UnLoad2.Start
+F.Intrinsic.Control.SetErrorHandler("frmOpenWo_UnLoad2_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+	f.ODBC.Connection!Con.Close 
+	f.Intrinsic.Control.End 
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("frmOpenWo_UnLoad2_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4206_BIOPENJOBS.g2u.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.frmOpenWo_UnLoad2.End
+
+Program.Sub.Comments.Start
+${$0$}$GCG_4206_BIOPENJOBS$}$RAN$}$9/6/2016 10:35:29 AM$}$False
+${$3$}$0$}$$}$0$}$-1$}$$}$12:00:00 AM$}$Modification of ARC Project 1507 original program GCG_6963-2_Multi_MRP.gas
+This adds in the ability to save the Summary for later use.
+Program.Sub.Comments.End
